@@ -21,7 +21,7 @@ services:
       - KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS=0
     restart: always
 
-mongodb:
+  mongodb:
     image: mongo:7.0
     container_name: ecommerce-mongodb
     ports:
