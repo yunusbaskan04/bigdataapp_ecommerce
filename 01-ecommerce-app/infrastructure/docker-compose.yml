@@ -20,3 +20,19 @@ services:
       - KAFKA_TRANSACTION_STATE_LOG_MIN_ISR=1
       - KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS=0
     restart: always
+
+mongodb:
+    image: mongo:7.0
+    container_name: ecommerce-mongodb
+    ports:
+      - "27017:27017" # MongoDB'nin dış dünyayla iletişim portu
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=secretpassword
+    volumes:
+      - ecommerce_mongodb_data:/data/db # EC2 kapansa bile veriler diskte kalsın
+    restart: always
+
+volumes:
+  ecommerce_mongodb_data:
+    name: ecommerce_mongodb_data
