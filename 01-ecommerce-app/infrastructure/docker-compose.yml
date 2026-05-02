@@ -37,6 +37,40 @@ services:
       - ecommerce_mongodb_data:/data/db # EC2 kapansa bile veriler diskte kalsın
     restart: always
 
+
+  spark-master:
+    image: apache/spark:3.5.1 # Resmi ve güncel Apache imajı
+    container_name: ecommerce-spark-master
+    # Master olarak başlaması için gereken komut
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
+    ports:
+      - "8080:8080"
+      - "7077:7077"
+    restart: always
+
+  spark-worker:
+    image: apache/spark:3.5.1
+    container_name: ecommerce-spark-worker
+    # Worker olarak başlaması ve Master'a bağlanması için gereken komut
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
+    environment:
+      - SPARK_WORKER_MEMORY=2G
+    depends_on:
+      - spark-master
+    restart: always
+
+  spark-app:
+    build:
+      context: ../stream-processor
+    container_name: ecommerce-spark-app
+    volumes:
+      - ../stream-processor:/app
+    depends_on:
+      - spark-master
+      - kafka
+      - mongodb
+    command: tail -f /dev/null
+
 volumes:
   ecommerce_mongodb_data:
     name: ecommerce_mongodb_data
