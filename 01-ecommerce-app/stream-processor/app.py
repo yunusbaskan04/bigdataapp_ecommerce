@@ -30,7 +30,10 @@ parsed_df = df.selectExpr("CAST(value AS STRING)") \
 query = parsed_df.writeStream \
     .format("mongodb") \
     .option("checkpointLocation", "/tmp/pyspark_checkpoints") \
-    .option("spark.mongodb.output.uri", "mongodb://admin:secretpassword@ecommerce-mongodb:27017/admin.ecommerce_logs?authSource=admin") \
+    .option("connection.uri", "mongodb://admin:secretpassword@ecommerce-mongodb:27017") \
+    .option("database", "ecommerce_db") \
+    .option("collection", "ecommerce_logs") \
+    .option("authSource", "admin") \
     .outputMode("append") \
     .start()
 
