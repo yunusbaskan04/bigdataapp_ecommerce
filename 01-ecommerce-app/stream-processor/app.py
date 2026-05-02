@@ -1,0 +1,37 @@
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import from_json, col
+from pyspark.sql.types import StructType, StringType, IntegerType
+
+# Spark Session - Fabrikayı ayağa kaldırıyoruz
+spark = SparkSession.builder \
+    .appName("EcommerceStreamProcessor") \
+    .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0,org.mongodb.spark:mongo-spark-connector_2.12:10.3.0") \
+    .getOrCreate()
+
+# Kafka'dan Veri Okuma (Musluk)
+df = spark.readStream \
+    .format("kafka") \
+    .option("kafka.bootstrap.servers", "ecommerce-kafka-broker:9092") \
+    .option("subscribe", "clickstream-data") \
+    .load()
+
+# Şema Tanımlama (Anlamlandırma)
+schema = StructType() \
+    .add("user_id", IntegerType()) \
+    .add("item", StringType()) \
+    .add("action", StringType())
+
+# Veriyi Dönüştürme
+parsed_df = df.selectExpr("CAST(value AS STRING)") \
+    .select(from_json(col("value"), schema).alias("data")) \
+    .select("data.*")
+
+# MongoDB'ye Yazma (Baraj)
+query = parsed_df.writeStream \
+    .format("mongodb") \
+    .option("checkpointLocation", "/tmp/pyspark_checkpoints") \
+    .option("spark.mongodb.output.uri", "mongodb://admin:secretpassword@ecommerce-mongodb:27017/admin.ecommerce_logs?authSource=admin") \
+    .outputMode("append") \
+    .start()
+
+query.awaitTermination()
