@@ -19,6 +19,10 @@ services:
       - KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1
       - KAFKA_TRANSACTION_STATE_LOG_MIN_ISR=1
       - KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS=0
+      - KAFKA_CLUSTER_ID=4L6_R_m8T7uN_7I3paG7DA
+      - KAFKA_LOG_DIRS=/var/lib/kafka/data
+    volumes:
+      - ecommerce_kafka_data:/var/lib/kafka/data
     restart: always
 
   mongodb:
@@ -36,3 +40,5 @@ services:
 volumes:
   ecommerce_mongodb_data:
     name: ecommerce_mongodb_data
+  ecommerce_kafka_data:
+    name: ecommerce_kafka_data
