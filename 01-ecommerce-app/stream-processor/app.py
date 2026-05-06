@@ -18,8 +18,13 @@ df = spark.readStream \
 # Şema Tanımlama (Anlamlandırma)
 schema = StructType() \
     .add("user_id", IntegerType()) \
+    .add("session_id", StringType()) \
+    .add("timestamp", StringType()) \
+    .add("action", StringType()) \
     .add("item", StringType()) \
-    .add("action", StringType())
+    .add("category", StringType()) \
+    .add("device_type", StringType()) \
+    .add("location", StringType())
 
 # Veriyi Dönüştürme
 parsed_df = df.selectExpr("CAST(value AS STRING)") \
