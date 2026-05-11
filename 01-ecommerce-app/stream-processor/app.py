@@ -5,7 +5,12 @@ from pyspark.sql.types import StructType, StringType, IntegerType
 # Spark Session - Fabrikayı ayağa kaldırıyoruz
 spark = SparkSession.builder \
     .appName("EcommerceStreamProcessor") \
-    .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0,org.mongodb.spark:mongo-spark-connector_2.12:10.3.0") \
+    .config("spark.hadoop.fs.s3a.endpoint", "http://ecommerce-minio:9000") \
+    .config("spark.hadoop.fs.s3a.access.key", "admin") \
+    .config("spark.hadoop.fs.s3a.secret.key", "secretpassword") \
+    .config("spark.hadoop.fs.s3a.path.style.access", "true") \
+    .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem") \
+    .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0,org.mongodb.spark:mongo-spark-connector_2.12:10.3.0,org.apache.hadoop:hadoop-aws:3.3.4") \
     .getOrCreate()
 
 # Kafka'dan Veri Okuma (Musluk)
@@ -42,4 +47,13 @@ query = parsed_df.writeStream \
     .outputMode("append") \
     .start()
 
-query.awaitTermination()
+# MinIO (Data Lake) Arşivleme - PARQUET FORMATI
+query_minio = parsed_df.writeStream \
+    .format("parquet") \
+    .option("checkpointLocation", "/tmp/pyspark_checkpoints_minio") \
+    .option("path", "s3a://clickstream-raw/events") \
+    .start()
+
+# İki sorguyu da bekletmek için
+spark.streams.awaitAnyTermination()
+
