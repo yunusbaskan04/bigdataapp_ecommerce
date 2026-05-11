@@ -72,8 +72,24 @@ services:
       - mongodb
     command: tail -f /dev/null
 
+  minio:
+    image: minio/minio:latest
+    container_name: ecommerce-minio
+    ports:
+      - "9000:9000"   # API Portu (Spark buraya yazacak)
+      - "9001:9001"   # Console Portu (Sen tarayıcıdan buraya bakacaksın)
+    environment:
+      - MINIO_ROOT_USER=admin
+      - MINIO_ROOT_PASSWORD=secretpassword
+    command: server /data --console-address ":9001"
+    volumes:
+      - ecommerce_minio_data:/data
+    restart: always
+
 volumes:
   ecommerce_mongodb_data:
     name: ecommerce_mongodb_data
   ecommerce_kafka_data:
     name: ecommerce_kafka_data
+  ecommerce_minio_data:
+    name: ecommerce_minio_data
