@@ -98,6 +98,15 @@ services:
     volumes:
       - ecommerce_postgres_data:/var/lib/postgresql
 
+  metabase:
+    image: metabase/metabase:latest
+    container_name: ecommerce-metabase
+    ports:
+      - "3000:3000"
+    environment:
+      - MB_DB_TYPE=h2
+    restart: always
+
 volumes:
   ecommerce_mongodb_data:
     name: ecommerce_mongodb_data
