@@ -86,6 +86,18 @@ services:
       - ecommerce_minio_data:/data
     restart: always
 
+  postgres:
+    image: postgres:latest
+    container_name: ecommerce-postgres
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: secretpassword
+      POSTGRES_DB: ecommerce_reports
+    ports:
+      - "5432:5432"
+    volumes:
+      - ecommerce_postgres_data:/var/lib/postgresql
+
 volumes:
   ecommerce_mongodb_data:
     name: ecommerce_mongodb_data
@@ -93,3 +105,5 @@ volumes:
     name: ecommerce_kafka_data
   ecommerce_minio_data:
     name: ecommerce_minio_data
+  ecommerce_postgres_data:
+    name: ecommerce_postgres_data
