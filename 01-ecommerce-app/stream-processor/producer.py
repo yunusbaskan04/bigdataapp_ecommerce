@@ -4,8 +4,9 @@ import time
 from kafka import KafkaProducer
 
 # Kafka Ayarları
-KAFKA_BROKER = "localhost:9092"
-TOPIC_NAME = "ecommerce-events"
+
+KAFKA_BROKER = "localhost:9092" 
+TOPIC_NAME = "clickstream-data"
 
 producer = KafkaProducer(
     bootstrap_servers=[KAFKA_BROKER],
