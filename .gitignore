@@ -1,0 +1,12 @@
+# Data files
+*.csv
+*.zip
+*.parquet
+
+# Virtual Environments
+venv/
+stream-processor/venv/
+
+# PySpark / Python artifacts
+__pycache__/
+.ipynb_checkpoints/
