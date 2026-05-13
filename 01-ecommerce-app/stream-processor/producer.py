@@ -1,56 +1,47 @@
+import csv
 import json
 import time
-import random
-from datetime import datetime
 from kafka import KafkaProducer
-from faker import Faker
 
-fake = Faker('tr_TR')
+# Kafka Ayarları
+KAFKA_BROKER = "localhost:9092"
+TOPIC_NAME = "ecommerce-events"
 
 producer = KafkaProducer(
-    bootstrap_servers=['ecommerce-kafka-broker:9092'],
-    value_serializer=lambda v: json.dumps(v).encode('utf-8')
+    bootstrap_servers=[KAFKA_BROKER],
+    value_serializer=lambda v: json.dumps(v).encode("utf-8")
 )
 
-ACTIONS = ['search', 'view_item', 'add_to_cart', 'checkout']
-DEVICES = ['Mobile', 'Web', 'Tablet']
-CATEGORIES = {
-    'Elektronik': ['Laptop', 'Akıllı Telefon', 'Kulaklık', 'Monitör'],
-    'Giyim': ['Tişört', 'Kot Pantolon', 'Ceket', 'Spor Ayakkabı'],
-    'Ev_Yasam': ['Çalışma Masası', 'Oyuncu Koltuğu', 'Masa Lambası', 'Kitaplık']
-}
+# İndireceğimiz verinin ilk 1 milyon satırlık test versiyonu
+DATA_FILE = "sample_data.csv" 
 
-# YENİ: Gerçekçi Bölgesel Analiz İçin Sabit Şehir Listesi
-CITIES = ['İstanbul', 'Ankara', 'İzmir', 'Bursa', 'Antalya', 'Adana', 'Kayseri', 'Gaziantep', 'Konya', 'Trabzon']
+print(f"🚀 Gerçek veri akışı başlatılıyor... Hedef: {TOPIC_NAME}")
 
-print("🔥 E-Ticaret Simülasyonu Başlıyor... (Durdurmak için Ctrl+C)")
+def stream_real_data():
+    try:
+        # csv.DictReader, devasa dosyaları satır satır okur, RAM'i şişirmez.
+        with open(DATA_FILE, mode='r', encoding='utf-8') as file:
+            csv_reader = csv.DictReader(file)
+            
+            for count, row in enumerate(csv_reader, 1):
+                # Veriyi Kafka'ya bas
+                producer.send(TOPIC_NAME, row)
+                
+                # Her 10.000 satırda bir ekrana bilgi bas (konsol donmasın diye)
+                if count % 10000 == 0:
+                    print(f"✅ {count} satır Kafka'ya gönderildi...")
+                    
+                # Gerçek zaman simülasyonu için çok ufak bir bekleme (Saniyede ~100 mesaj)
+                time.sleep(0.01)
 
-try:
-    while True:
-        user_id = random.randint(1, 5000)
-        action = random.choice(ACTIONS)
-        device = random.choice(DEVICES)
-        category = random.choice(list(CATEGORIES.keys()))
-        item = random.choice(CATEGORIES[category])
-        city = random.choice(CITIES) # YENİ: Listeden rastgele gerçek şehir seçimi
-        
-        payload = {
-            "user_id": user_id,
-            "session_id": str(fake.uuid4()),
-            "timestamp": datetime.utcnow().isoformat(),
-            "action": action,
-            "item": item,
-            "category": category,
-            "device_type": device,
-            "location": city # YENİ: Artık Lake Yağıntown yok :)
-        }
-        
-        producer.send('clickstream-data', value=payload)
-        print(f"🚀 Gönderildi: {payload}")
-        
-        time.sleep(random.uniform(0.1, 0.5))
-        
-except KeyboardInterrupt:
-    print("\n🛑 Simülasyon durduruldu.")
-finally:
+    except FileNotFoundError:
+        print(f"❌ HATA: {DATA_FILE} dosyası bulunamadı! Veriyi aynı klasöre koyduğundan emin ol.")
+    except Exception as e:
+        print(f"❌ Beklenmeyen Hata: {e}")
+
+if __name__ == "__main__":
+    stream_real_data()
+    # İşlem bitince Kafka bağlantısını güvenli kapat
+    producer.flush()
     producer.close()
+    print("🏁 Veri akışı tamamlandı!")
