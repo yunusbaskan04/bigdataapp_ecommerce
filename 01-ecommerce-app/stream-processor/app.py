@@ -1,25 +1,27 @@
-from pyspark.sql import SparkSession from pyspark.sql.functions import from_json, col, to_timestamp from 
-pyspark.sql.types import StructType, StringType, IntegerType
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import from_json, col, to_timestamp, when
+from pyspark.sql.types import StructType, StringType, IntegerType, DoubleType
 
-# Spark Session - Fabrikayı ayağa kaldırıyoruz
+# 1. Spark Session
 spark = SparkSession.builder \
-    .appName("EcommerceStreamProcessor") \
+    .appName("EcommerceRealWorldStreaming") \
     .config("spark.hadoop.fs.s3a.endpoint", "http://ecommerce-minio:9000") \
     .config("spark.hadoop.fs.s3a.access.key", "admin") \
     .config("spark.hadoop.fs.s3a.secret.key", "secretpassword") \
     .config("spark.hadoop.fs.s3a.path.style.access", "true") \
     .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem") \
-    .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0,org.mongodb.spark:mongo-spark-connector_2.12:10.3.0,org.apache.hadoop:hadoop-aws:3.3.4") \
     .getOrCreate()
 
-# Kafka'dan Veri Okuma (Musluk)
+spark.sparkContext.setLogLevel("WARN")
+
+# 2. Kafka'dan Veri Okuma
 df = spark.readStream \
     .format("kafka") \
     .option("kafka.bootstrap.servers", "ecommerce-kafka-broker:9092") \
     .option("subscribe", "clickstream-data") \
     .load()
 
-# Şema Tanımlama (Anlamlandırma)
+# 3. Kaggle V2 Şeması
 schema = StructType() \
     .add("event_time", StringType()) \
     .add("event_type", StringType()) \
@@ -30,19 +32,17 @@ schema = StructType() \
     .add("price", DoubleType()) \
     .add("user_id", IntegerType()) \
     .add("user_session", StringType())
-# Veriyi Dönüştürme
+
+# 4. Veri Dönüştürme
 parsed_df = df.selectExpr("CAST(value AS STRING)") \
     .select(from_json(col("value"), schema).alias("data")) \
     .select("data.*") \
-    .withColumn("event_time", to_timestamp(col("event_time"), "yyyy-MM-dd HH:mm:ss UTC")) \
-    .withColumn("category_main", split(col("category_code"), "\.").getItem(0)) \
+    .withColumn("event_time", to_timestamp(col("event_time"), "yyyy-MM-dd HH:mm:ss 'UTC'")) \
     .fillna({"category_code": "unknown", "brand": "no-brand"})
-
-
-# MongoDB'ye Yazma (Baraj)
-query = parsed_df.writeStream \
+# 5. MongoDB Sink
+query_mongo = parsed_df.writeStream \
     .format("mongodb") \
-    .option("checkpointLocation", "/tmp/pyspark_checkpoints") \
+    .option("checkpointLocation", "/tmp/pyspark_checkpoints_mongo") \
     .option("connection.uri", "mongodb://admin:secretpassword@ecommerce-mongodb:27017") \
     .option("database", "ecommerce_db") \
     .option("collection", "ecommerce_logs") \
@@ -50,13 +50,13 @@ query = parsed_df.writeStream \
     .outputMode("append") \
     .start()
 
-# MinIO (Data Lake) Arşivleme - PARQUET FORMATI
+# 6. MinIO Sink
 query_minio = parsed_df.writeStream \
     .format("parquet") \
     .option("checkpointLocation", "/tmp/pyspark_checkpoints_minio") \
     .option("path", "s3a://clickstream-raw/events") \
     .start()
 
-# İki sorguyu da bekletmek için
-spark.streams.awaitAnyTermination()
+print("🚀 V2 Boru Hattı Ateşlendi! Veriler akıyor...")
 
+spark.streams.awaitAnyTermination()
