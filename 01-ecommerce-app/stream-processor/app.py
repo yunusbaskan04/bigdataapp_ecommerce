@@ -1,6 +1,5 @@
-from pyspark.sql import SparkSession
-from pyspark.sql.functions import from_json, col
-from pyspark.sql.types import StructType, StringType, IntegerType
+from pyspark.sql import SparkSession from pyspark.sql.functions import from_json, col, to_timestamp from 
+pyspark.sql.types import StructType, StringType, IntegerType
 
 # Spark Session - Fabrikayı ayağa kaldırıyoruz
 spark = SparkSession.builder \
@@ -22,19 +21,23 @@ df = spark.readStream \
 
 # Şema Tanımlama (Anlamlandırma)
 schema = StructType() \
+    .add("event_time", StringType()) \
+    .add("event_type", StringType()) \
+    .add("product_id", IntegerType()) \
+    .add("category_id", StringType()) \
+    .add("category_code", StringType()) \
+    .add("brand", StringType()) \
+    .add("price", DoubleType()) \
     .add("user_id", IntegerType()) \
-    .add("session_id", StringType()) \
-    .add("timestamp", StringType()) \
-    .add("action", StringType()) \
-    .add("item", StringType()) \
-    .add("category", StringType()) \
-    .add("device_type", StringType()) \
-    .add("location", StringType())
-
+    .add("user_session", StringType())
 # Veriyi Dönüştürme
 parsed_df = df.selectExpr("CAST(value AS STRING)") \
     .select(from_json(col("value"), schema).alias("data")) \
-    .select("data.*")
+    .select("data.*") \
+    .withColumn("event_time", to_timestamp(col("event_time"), "yyyy-MM-dd HH:mm:ss UTC")) \
+    .withColumn("category_main", split(col("category_code"), "\.").getItem(0)) \
+    .fillna({"category_code": "unknown", "brand": "no-brand"})
+
 
 # MongoDB'ye Yazma (Baraj)
 query = parsed_df.writeStream \
