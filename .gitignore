@@ -10,3 +10,9 @@ stream-processor/venv/
 # PySpark / Python artifacts
 __pycache__/
 .ipynb_checkpoints/
+airflow-workspace/airflow.db
+airflow-workspace/airflow.cfg
+airflow-workspace/logs/
+airflow-workspace/airflow-env/
+airflow-workspace/*.pid
+airflow-workspace/simple_auth_manager_passwords.json.generated

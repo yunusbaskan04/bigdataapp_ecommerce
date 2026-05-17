@@ -47,10 +47,13 @@ hourly_traffic_df = raw_df.withColumn("event_hour", hour(col("event_time"))) \
 # category_code altındaki 'electronics.smartphone' verisini noktadan ayırıp ilk kelimeyi alıyoruz
 category_analysis_df = raw_df.filter(col("category_code").isNotNull()) \
     .withColumn("main_category", split(col("category_code"), "\.").getItem(0)) \
+    .filter(col("main_category") != "") \
+    .filter(col("main_category") != "unknown") \
     .groupBy("main_category") \
     .agg(count("*").alias("category_click_count")) \
     .orderBy(col("category_click_count").desc()) \
-    .limit(5) # En popüler 5 ana kategoriyi al
+    .limit(5)
+
 
 print("📊 Analiz tamamlandı. Sonuçlar PostgreSQL'e yazılıyor...")
 
