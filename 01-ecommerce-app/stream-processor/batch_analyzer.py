@@ -1,5 +1,5 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, count, hour, to_timestamp, sum as _sum
+from pyspark.sql.functions import col, count, hour, to_timestamp, sum as _sum, split
 
 # SparkSession Yapılandırması (MinIO ve Postgres Destekli)
 spark = SparkSession.builder \
@@ -35,6 +35,23 @@ revenue_df = raw_df.filter(col("event_type") == "purchase") \
     .orderBy(col("total_revenue").desc()) \
     .limit(10) # Sadece en iyi 10 markayı al
 
+# 🚀 ANALİZ 3: Günün Hangi Saatleri En Yoğun? (Zaman Serisi)
+# event_time kolonundan saati çıkarıp grupluyoruz
+hourly_traffic_df = raw_df.withColumn("event_hour", hour(col("event_time"))) \
+    .groupBy("event_hour") \
+    .agg(count("*").alias("traffic_count")) \
+    .orderBy("event_hour")
+
+
+# 🚀 ANALİZ 4: En Popüler Ana Kategoriler (Kategori Dağılımı)
+# category_code altındaki 'electronics.smartphone' verisini noktadan ayırıp ilk kelimeyi alıyoruz
+category_analysis_df = raw_df.filter(col("category_code").isNotNull()) \
+    .withColumn("main_category", split(col("category_code"), "\.").getItem(0)) \
+    .groupBy("main_category") \
+    .agg(count("*").alias("category_click_count")) \
+    .orderBy(col("category_click_count").desc()) \
+    .limit(5) # En popüler 5 ana kategoriyi al
+
 print("📊 Analiz tamamlandı. Sonuçlar PostgreSQL'e yazılıyor...")
 
 # 2. Sonuçları PostgreSQL'e Yaz (Data Warehouse)
@@ -61,4 +78,23 @@ revenue_df.write \
     .mode("overwrite") \
     .save()
 
+hourly_traffic_df.write \
+    .format("jdbc") \
+    .option("url", "jdbc:postgresql://ecommerce-postgres:5432/ecommerce_reports") \
+    .option("dbtable", "hourly_traffic") \
+    .option("user", "admin") \
+    .option("password", "secretpassword") \
+    .option("driver", "org.postgresql.Driver") \
+    .mode("overwrite") \
+    .save()
+
+category_analysis_df.write \
+    .format("jdbc") \
+    .option("url", "jdbc:postgresql://ecommerce-postgres:5432/ecommerce_reports") \
+    .option("dbtable", "category_distribution") \
+    .option("user", "admin") \
+    .option("password", "secretpassword") \
+    .option("driver", "org.postgresql.Driver") \
+    .mode("overwrite") \
+    .save()
 print("✅ Raporlar hazır! Fabrika gece mesaisini başarıyla tamamladı.")
